@@ -1,0 +1,6 @@
+{
+    "port": 8000,
+    "RPCs": {
+        "rinkeby": "https://{network}.infura.io/v3/{key}"
+    }
+}
