@@ -1,12 +1,12 @@
-const w3 = require('web3').default
+const Web3 = require('web3')
 const config = require('../../config.json')
 
-const web3 = new w3(
-    Web3.givenProvider ||
-    new Web3.providers.HttpProvider(
-        config.RPCs.rinkeby
-    )
-)
+let web3 = {
+    rinkeby: new Web3(config.RPCs.rinkeby),
+    ropsten: new Web3(config.RPCs.ropsten),
+    binance: new Web3(config.RPCs.binance)
+
+}
 
 exports.ethEnabled = async () => {
     // @ts-ignore
