@@ -10,7 +10,7 @@ let getInfo = async (ctx, next) => {
     const supportedChains = Object.keys(config.RPCs)
 
     const info = {
-        appName: package.name,
+        'app-name': package.name,
         version: package.version,
         "supported-chains": supportedChains
     }
