@@ -29,6 +29,7 @@ catch(e) {
 // Local Packages
 const Log = require('./src/util/log')
 const Global = require('./src/util/global')
+const EventListener = require('./src/event/listener')
 
 let app = new Koa()
 app.proxy = true
@@ -80,6 +81,8 @@ app.use(test.routes()).use(test.allowedMethods())
 app.use(routers.routes()).use(routers.allowedMethods())
 
 app.use(KoaStatic('./public'))
+
+EventListener()
 
 app.listen(config.port)
 Log.info("App 已经开始运行在 http://127.0.0.1:" + config.port)
