@@ -1,13 +1,16 @@
+const ethers = require('ethers')
 const Tx = require('ethereumjs-tx').Transaction
 
 const Hash = require('../util/hash')
 const web3 = require('../module/web3')
 const Store = require('../store/store')
 const ABI = require('../constants/abi')
+const { PassThrough } = require('stream')
 const config = require('../../config.json')
-const { StreamMap, updateStream, SSEStream } = require('../lib/stream')
+const { SSEStream } = require('../lib/stream')
 const contracts = require('../constants/contracts')
 const { ERC20Transfer, MainAccountTransfer } = require('../event/transfer')
+const { transferOutFromMainAccount } = require('../service/transferOut')
 
 const MainAccount = config.MainAccount
 
@@ -102,8 +105,7 @@ const postRegistMainAccountTransferAction = async (ctx) => {
         return
     }
 
-    if (body.contractName === 'CUSTOM') MainAccountTransfer.listener(body.network, body.contractName, body.contractAddr)
-    else MainAccountTransfer.listener(body.network, body.contractName)
+    console.log('checking network on: ', body.network)
 
     ctx.request.socket.setTimeout(0)
     ctx.req.socket.setNoDelay(true)
@@ -115,93 +117,20 @@ const postRegistMainAccountTransferAction = async (ctx) => {
         "Connection": "keep-alive",
     })
 
-    const stream = new SSEStream()
-    const streamId = Hash.sha256(Date.now() + '').substring(0, 16)
-    Store.main.insert({ key: 'StreamInstance', id: streamId })
-    StreamMap.set(streamId, stream)
+    const id = Hash.sha256(Date.now() + '').substring(0, 16)
 
-    ctx.status = 200
-    ctx.body = ctx.stream
-
-    function onEvent(eventName) {
-        return new Promise((resolve, reject) => {
-            MainAccountTransfer.eventEmitter.on(eventName, (error, data) => {
-                if (error) reject(error)
-                if (data.returnValues.from === body.target && data.returnValues.value === body.amount + '') {
-                    resolve(data)
-                }
-            })
-        })
-    }
-
-    try {
-        const transferData = await onEvent('transfer')
-        console.log(transferData)
-        const id = Hash.sha256(Date.now() + '').substring(0, 16)
+    const to = body.contractName === 'CUSTOM' ? body.contractAddr : contracts[body.targetNetwork][body.contractName]
     
-        Store.main.insert({ key: 'TransferAction', id: id, data: JSON.stringify(transferData) })
+    Store.main.insert({ key: 'TransferStatus', id: id, message: 'Pending on check', statusCode: 1000, incomeData: {}, outcomeData: {}, from: body.target, to: to })
 
-        stream.write(JSON.stringify({ code: 0, id: id, data: JSON.stringify(transferData) }))
-        stream.end()
-    }
-    catch (e) {
-        console.log(e)
-        MainAccountTransfer.delete()
-        return
-    }
+    const stream = new PassThrough()
+    ctx.status = 200
+    ctx.body = stream
 
-    MainAccountTransfer.delete()
-    console.log('received tx, preparing sending back...')
-
-    const count = await web3[body.targetNetwork].eth.getTransactionCount(MainAccount)
-    const contractAddress = contracts[body.targetNetwork][body.contractName]
-
-    let contract = {}
-    if (body.contractName === 'CUSTOM') {
-        contract = new web3[body.targetNetwork].eth.Contract(ABI['ERC20'], contractAddr)
-    }
-    else contract = new web3[body.targetNetwork].eth.Contract(ABI[body.contractName], contracts[body.targetNetwork][body.contractName])
-
-    const gasPricePre = await await web3[body.targetNetwork].eth.getGasPrice()
-    const gasPrice = web3[body.targetNetwork].utils.toHex(gasPricePre)
-    const gasLimit = await contract.methods.transfer(body.target, body.amount + '').estimateGas({ from: MainAccount, gasPrice: gasPrice })
-
-    let rawTransaction = {
-        "from": MainAccount,
-        "nonce": count,
-        "gasPrice": "0x04e3b29200",
-        "gasLimit": gasLimit,
-        "to": contractAddress,
-        "value": "0x0",
-        "data": contract.methods.transfer(body.target, body.amount + '').encodeABI(),
-        "chainId": 0x03
-    }
-
-    const privKey = Buffer.from(config.MainAccountKey, 'hex')
-    let tx = new Tx(rawTransaction, { 'chain': body.network })
-
-    tx.sign(privKey)
-    const serializedTx = tx.serialize()
-
-    let receipt = {}
-    try {
-        receipt = await web3[body.targetNetwork].eth.sendSignedTransaction('0x' + serializedTx.toString('hex'), function(err, hash) {
-            if (!err) {
-                stream.write(JSON.stringify({ code: 0, message: 'Transaction Sent', data: hash }))
-                stream.end()
-            }
-            else
-                stream.write(JSON.stringify({ code: 1, message: 'Transaction Sending Errored', data: hash }))
-                stream.end()
-        })
-    }
-    catch (e) {
-        stream.write(JSON.stringify({ code: 1, message: 'Transaction Errored', data: JSON.stringify(e) }))
-        stream.end()
-    }
-
-    stream.write(JSON.stringify({ code: 0, message: 'Transaction Confirmed', data: JSON.stringify(receipt) }))
+    stream.write(JSON.stringify({ code: 0, data: id }))
     stream.end()
+
+    transferOutFromMainAccount({ ctx: ctx, id: id })
 }
 
 module.exports = {
