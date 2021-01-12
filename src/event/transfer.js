@@ -38,6 +38,9 @@ const ERC20Transfer = {
         .on('error', (error) => {
             this.eventEmitter.emit('transfer', error, undefined)
         })
+    },
+    delete: function () {
+        delete this.listener
     }
 }
 
@@ -73,6 +76,9 @@ const MainAccountTransfer = {
         .on('error', (error) => {
             this.eventEmitter.emit('transfer', error, undefined)
         })
+    },
+    delete: function () {
+        delete this.listener
     }
 }
 
