@@ -3,7 +3,7 @@ const log4js = require("log4js")
 
 let SysTime = new Date()
 let logTime = SysTime.getFullYear() + "-" + ("0" + (SysTime.getMonth() + 1)).slice(-2) + "-" + ("0" + SysTime.getDate()).slice(-2)
-const coreLogFileName = `./logs/MatatakiAuth-${logTime}.log`
+const coreLogFileName = `./logs/BridgeTokens-${logTime}.log`
 
 log4js.configure({
     appenders: {
@@ -16,7 +16,7 @@ log4js.configure({
     }
 })
 
-let MatatakiAuthLogger = log4js.getLogger("MatatakiAuth")
+let MatatakiAuthLogger = log4js.getLogger("BridgeTokens")
 
 function info(log) {
     MatatakiAuthLogger.info(log)
