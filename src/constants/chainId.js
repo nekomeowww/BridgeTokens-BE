@@ -1,9 +1,13 @@
-const ethereum = '1'
-const ropsten = '3'
-const rinkeby = '4'
+const chainId = {
+    ethereum: 1,
+    ropsten: 3,
+    rinkeby: 4,
 
-const binance = '56'
-const binanceTestnet = '97'
+    binance: 56,
+    binanceTest: 97,
 
-const heco = '128'
-const hecoTest = '256'
+    heco: 128,
+    hecoTest: 256
+}
+
+module.exports = chainId
