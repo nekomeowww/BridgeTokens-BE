@@ -60,36 +60,39 @@ const MainAccountTransfer = {
      * 传入三个参数，该方法将从传入的三个参数中判断是否使用传入参数的合约地址，亦或是预设值
      * @param {String} account              - 转账的目标用户
      * @param {String} network              - 区块链网络名称，全小写
-     * @param {String} contractName         - 合约名称，默认值为 ANT，如果该值为 CUSTOM 则载入传入的合约地址
-     * @param {String} contractAddr         - 合约地址，只有当 contractName 为 CUSTOM 时才会生效
      */
-    listener: async function (account, network) {
-        const id = setInterval(async () => {
-            let block = await web3[network].eth.getBlock('latest')
-            console.log(`[*] Searching block ${block.number}...`)
-            if (block && block.transactions) {
-                for (let txHash of block.transactions) {
-                    let tx
-                    try { tx = await web3[network].eth.getTransaction(txHash) }
-                    catch { continue }
+    listener: async function (account, network, id) {
+        this.intervalId = setInterval(async () => {
+            try {
+                let block = await web3[network].eth.getBlock('latest')
+                console.log(`[*] Searching block ${block.number}...`)
+                if (block && block.transactions) {
+                    for (let txHash of block.transactions) {
+                        let tx
+                        try { tx = await web3[network].eth.getTransaction(txHash) }
+                        catch { continue }
 
-                    let txText
-                    try { txText = JSON.stringify(tx) }
-                    catch { continue }
+                        let txText
+                        try { txText = JSON.stringify(tx) }
+                        catch { continue }
 
-                    if (account === tx.to) {
-                        console.log(`[+] Transaction found on block ${block.number}`)
-                        res = tx
-                        this.eventEmitter.emit('transfer', undefined, res)
+                        if (account === tx.to) {
+                            console.log(`[+] Transaction found on block ${block.number}`)
+                            res = tx
+                            this.eventEmitter.emit('transfer', undefined, res)
+                        }
                     }
                 }
             }
+            catch (e) {
+                await Store.main.update({ key: 'TransferStatus', id: id }, { $set: { message: 'Transaction Check Failed With RPC Error' } }, {})
+                await Store.main.update({ key: 'TransferStatus', id: id }, { $set: { status: 'Failed' } }, {})
+                await Store.main.update({ key: 'TransferStatus', id: id }, { $set: { code: -1008 } }, {})
+                this.delete()
+            }
         }, 2000)
-
-        this.intervalId = id
     },
     delete: function () {
-        delete this.listener
         clearInterval(this.intervalId)
     },
     intervalId: null

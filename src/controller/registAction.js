@@ -121,7 +121,16 @@ const postRegistMainAccountTransferAction = async (ctx) => {
 
     const to = body.contractName === 'CUSTOM' ? body.contractAddr : contracts[body.targetNetwork][body.contractName]
     
-    Store.main.insert({ key: 'TransferStatus', id: id, message: 'Pending on check', statusCode: 1000, incomeData: {}, outcomeData: {}, from: body.target, to: to })
+    const check = await Store.main.findOne({ key: 'TransferStatus', id: id, active: 'Active'})
+    if (check) {
+        ctx.status = 200
+        ctx.body = stream
+
+        stream.write(JSON.stringify({ code: -1, data: id, message: 'You Still have an Active Transaction Pending, Please Try Again after 5 Minutes' }))
+        stream.end()
+        return
+    }
+    await Store.main.insert({ key: 'TransferStatus', id: id, message: 'Pending on check', statusCode: 1000, incomeData: {}, outcomeData: {}, from: body.target, to: to, status: 'Pending', activeStatus: 'Active' })
 
     const stream = new PassThrough()
     ctx.status = 200
@@ -130,7 +139,14 @@ const postRegistMainAccountTransferAction = async (ctx) => {
     stream.write(JSON.stringify({ code: 0, data: id }))
     stream.end()
 
+    if (body.contractName === 'CUSTOM') MainAccountTransfer.listener(body.contractAddr, body.network, id)
+    else MainAccountTransfer.listener(contracts[body.network][body.contractName], body.network, id)
+
     transferOutFromMainAccount({ ctx: ctx, id: id })
+
+    setTimeout(() => {
+        Store.main.findOne({ key: 'TransferStatus', id: id }, { $set: { activeStatus: 'Passed' } })
+    }, 300000)
 }
 
 module.exports = {
