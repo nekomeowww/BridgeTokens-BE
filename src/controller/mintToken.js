@@ -11,6 +11,60 @@ const { getChainForEthereumjsTx } = require('../lib/chainConfig')
 
 const chainId = require('../constants/chainId')
 
+const mint = async (network) => {
+    console.log('mint on network: ', network)
+
+    const w3 = web3[network]
+    const contractAddress = contracts[network].ANT
+
+    const contract = new w3.eth.Contract(ABI.ANT, contractAddress)
+
+    const isMinter = await contract.methods.minters(config.AdminAccount).call()
+
+    if (!isMinter) {
+        await addMinter(config.AdminAccount, config.AdminAccountKey)
+    }
+
+    const count = await w3.eth.getTransactionCount('0x2d092633980aA79575780b06344c82eeaAD121A4')
+
+    const gasPricePre = await await w3.eth.getGasPrice()
+    const gasPrice = w3.utils.toHex(gasPricePre)
+
+    // const gasLimit = await contract.methods.mint(MainAccount, 1000000 + '').estimateGas({ from: MainAccount, gasPrice: gasPricePre })
+
+    let rawTransaction = {
+        "from": MainAccount,
+        "nonce": count,
+        "gasPrice": gasPrice,
+        "gasLimit": 5000000,
+        "to": contractAddress,
+        "value": "0x0",
+        "data": contract.methods.mint('0x2d092633980aA79575780b06344c82eeaAD121A4', '1000000000000000000000000').encodeABI(),
+        "chainId": w3.utils.toHex(chainId[network])
+    }
+
+    const privKey = Buffer.from(config.AdminAccountKey, 'hex')
+    let tx = new Tx(rawTransaction, getChainForEthereumjsTx(network) )
+
+    tx.sign(privKey)
+    const serializedTx = tx.serialize()
+
+    let receipt = {}
+    try {
+        receipt = await w3.eth.sendSignedTransaction('0x' + serializedTx.toString('hex'), function(err, hash) {
+            if (!err) {
+                console.log(hash)
+            }
+            else
+                console.log(err)
+        })
+    }
+    catch (e) {
+        console.log(e)
+    }
+    console.log(receipt)
+}
+
 const addMinter = async (network, account, accountKey) => {
     const w3 = web3[network]
     const contractAddress = contracts[network].ANT

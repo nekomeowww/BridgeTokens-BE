@@ -65,7 +65,7 @@ const postRegistERC20TransferAction = async (ctx) => {
 
 const postRegistMainAccountTransferAction = async (ctx) => {
     const { body } = ctx.request
-    if (!body.target || !body.amount || !body.network || !body.targetNetwork || !body.contractName || !body.contractAddr || !body.targetContractAddr) {
+    if (!body.target || !body.amount || !body.network || !body.targetNetwork || !body.contractName || !body.contractAddr || !body.targetContractAddr || !body.fee) {
         ctx.status = 444
         return
     }
@@ -106,6 +106,7 @@ const postRegistMainAccountTransferAction = async (ctx) => {
     }
 
     console.log('checking network on: ', body.network)
+    console.log(body)
 
     ctx.request.socket.setTimeout(0)
     ctx.req.socket.setNoDelay(true)
@@ -130,7 +131,7 @@ const postRegistMainAccountTransferAction = async (ctx) => {
         stream.end()
         return
     }
-    await Store.main.insert({ key: 'TransferStatus', id: id, message: 'Pending on check', statusCode: 1000, incomeData: {}, outcomeData: {}, from: body.target, to: to, status: 'Pending', activeStatus: 'Active' })
+    await Store.main.insert({ key: 'TransferStatus', id: id, message: 'Pending on check', code: 1000, incomeData: {}, outcomeData: {}, from: body.target, to: to, status: 'Pending', activeStatus: 'Active' })
 
     const stream = new PassThrough()
     ctx.status = 200
@@ -141,12 +142,13 @@ const postRegistMainAccountTransferAction = async (ctx) => {
 
     if (body.contractName === 'CUSTOM') MainAccountTransfer.listener(body.contractAddr, body.network, id)
     else MainAccountTransfer.listener(contracts[body.network][body.contractName], body.network, id)
+    console.log(contracts[body.network][body.contractName], body.network, id)
 
     transferOutFromMainAccount({ ctx: ctx, id: id })
 
     setTimeout(() => {
         Store.main.findOne({ key: 'TransferStatus', id: id }, { $set: { activeStatus: 'Passed' } })
-    }, 300000)
+    }, 120000)
 }
 
 module.exports = {

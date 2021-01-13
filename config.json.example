@@ -1,6 +1,16 @@
 {
-    "port": 8000,
+    "port": 8001,
     "RPCs": {
-        "rinkeby": "https://{network}.infura.io/v3/{key}"
-    }
+        "ethereum": "wss://mainnet.infura.io/ws/v3/填写 infura 的 key",
+        "rinkeby": "wss://rinkeby.infura.io/ws/v3/填写 infura 的 key",
+        "ropsten": "wss://ropsten.infura.io/ws/v3/填写 infura 的 key",
+        "binance": "https://bsc-dataseed.binance.org/",
+        "binanceTest": "https://data-seed-prebsc-1-s1.binance.org:8545/",
+        "heco": "https://hecorpc.anyswap.exchange",
+        "hecoTest": "https://http-testnet.hecochain.com"
+    },
+    "MainAccount": "中间人账号",
+    "MainAccountKey": "中间人私钥",
+    "AdminAccount": "管理员账号（比如合约创建者）",
+    "AdminAccountKey": "管理员私钥"
 }

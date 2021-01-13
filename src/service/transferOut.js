@@ -7,6 +7,7 @@ const ABI = require('../constants/abi')
 const config = require('../../config.json')
 const contracts = require('../constants/contracts')
 const { MainAccountTransfer } = require('../event/transfer')
+const BigNumber = require('bignumber.js').default
 
 const { transfer } = require('../controller/mintToken')
 
@@ -103,7 +104,15 @@ const transferOutFromMainAccount = async (data) => {
     console.log('received tx, preparing sending back...')
     console.log('transfering network from: ', body.targetNetwork)
 
-    transfer(body.targetNetwork, body.contractName, body.target, body.amount, id)
+    // 手续费
+    let amount = new BigNumber(body.amount)
+    // 填入百分比 + 1 之后的值
+    // 比如 40% 的手续费，应该填入 1.4
+    // 0% 的手续费，填入 1
+    const amountWithOutFee = amount.dividedBy(1).toString()
+    console.log(amountWithOutFee)
+
+    transfer(body.targetNetwork, body.contractName, body.target, amountWithOutFee, id)
 }
 
 module.exports = {
